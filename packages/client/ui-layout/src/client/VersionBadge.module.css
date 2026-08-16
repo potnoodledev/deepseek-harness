@@ -1,0 +1,15 @@
+.badge {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 1;
+  padding: 3px 7px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 88%, transparent);
+  color: var(--dsw-alias-label-caption);
+  font: var(--dsw-font-xs-13);
+  line-height: 16px;
+  pointer-events: none;
+  user-select: none;
+}

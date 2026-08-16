@@ -13,6 +13,7 @@ import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply as themeApply, inject as themeInject, ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { apply, inject, LayoutController } from '@deepseek-ai/dsh-client-ui-layout/client'
+import { VersionBadge } from '@deepseek-ai/dsh-client-ui-layout/src/client/VersionBadge.tsx'
 import { apply as nodeApply } from '@deepseek-ai/dsh-client-ui-layout'
 import * as invariant from '@deepseek-ai/dsh-client-ui-layout/invariant'
 
@@ -51,6 +52,7 @@ describe('ui-layout client apply', () => {
     expect(slots.spec('sidebar')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('conversation')).toEqual({ kind: 'single', scope: 'session-maybe' })
     expect(slots.spec('details')).toEqual({ kind: 'single', scope: 'session' })
+    expect(slots.entries('shell.overlay')).toMatchObject([{ options: { id: 'version', order: 100 }, component: VersionBadge }])
   })
 
   it('injects no business face and attaches the layout actions', async () => {
@@ -104,6 +106,7 @@ describe('ui-layout client apply', () => {
     expect(slots.spec('root')).toEqual({ kind: 'single', scope: 'root' })
   })
 })
+
 
 describe('node half + invariant companion', () => {
   it('node apply is an intentional no-op (loader-managed lifecycle only)', () => {
