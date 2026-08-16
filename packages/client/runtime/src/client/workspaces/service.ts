@@ -11,6 +11,11 @@ import type { SessionsPort, SessionsPortList } from '../contract/sessions-port.t
 import type { IWorkspaces } from '../contract/workspaces.ts'
 import { WorkspaceManager, type WorkspaceListPhase } from './manager.ts'
 
+/** Stable client-only identity for the origin-private browser workspace. */
+export const BROWSER_WORKSPACE_ID = 'browser-opfs' as WorkspaceId
+/** Directory presented to the browser agent's filesystem provider. */
+export const BROWSER_WORKSPACE_PATH = '/workspace'
+
 /** Workspace list plus the two-baseline readiness and default-target projection. */
 export interface WorkspaceListState {
   items: readonly WorkspaceView[]
@@ -87,8 +92,21 @@ export class WorkspaceRuntime implements IWorkspaces {
    * @returns the reused or newly created session id.
    */
   async connectWorkspace(workspaceId: WorkspaceId): Promise<SessionId> {
+    if (workspaceId === BROWSER_WORKSPACE_ID && !isBrowserAgentMode()) {
+      this.selectBrowserWorkspace()
+      // Navigation replaces this page before the caller can use a session id.
+      return new Promise<SessionId>(() => {})
+    }
     const workspace = this.list.getSnapshot().items.find(item => item.workspaceId === workspaceId)
     if (workspace === undefined) throw new Error(`workspaces.connectWorkspace: unknown workspace ${workspaceId}`)
+    if (workspaceId === BROWSER_WORKSPACE_ID) {
+      const sessions = this.sessions.list.getSnapshot()
+      const blank = sessions.ids.find((id) => {
+        const session = sessions.byId[id]
+        return session?.blank === true && session.cwd === BROWSER_WORKSPACE_PATH
+      })
+      return blank ?? this.sessions.create({ cwd: BROWSER_WORKSPACE_PATH })
+    }
     // Coalesce concurrent connects: a create's summary lands without cwd
     // until the host frame arrives, so a second call inside that window
     // would miss the reuse scan and mint another hidden blank session.
@@ -133,9 +151,9 @@ export class WorkspaceRuntime implements IWorkspaces {
     const reconcile = (): void => {
       if (disposed || state !== 'waiting') return
       const workspace = this.list.getSnapshot()
-      if (!workspace.baselinesReady) return
+      if (!workspace.baselinesReady && !(isBrowserAgentMode() && this.sessions.list.getSnapshot().phase === 'ready')) return
       const current = this.sessions.list.getSnapshot().current
-      const target = workspace.recentWorkspaceId
+      const target = isBrowserAgentMode() ? BROWSER_WORKSPACE_ID : workspace.recentWorkspaceId
       if (current !== undefined || target === undefined) {
         state = 'done'
         return
@@ -185,10 +203,23 @@ export class WorkspaceRuntime implements IWorkspaces {
       this.sessions.clear()
       return
     }
+    if (target === BROWSER_WORKSPACE_ID && !isBrowserAgentMode()) {
+      this.selectBrowserWorkspace()
+      return
+    }
     void this.connectWorkspace(target).then(
       (sessionId) => { this.sessions.open(sessionId) },
       (reason: unknown) => { console.warn('new session failed:', reason) },
     )
+  }
+
+  /** Switch the current page to the browser-held workspace and restart the app. */
+  selectBrowserWorkspace(): void {
+    if (typeof location === 'undefined') return
+    const url = new URL(location.href)
+    url.searchParams.set('browser-agent', '1')
+    url.searchParams.delete('fixture')
+    location.assign(url.href)
   }
 
   /**
@@ -342,8 +373,11 @@ export class WorkspaceRuntime implements IWorkspaces {
     if (sessions.current !== undefined && workspace.archivedSessionIds.includes(sessions.current)) {
       this.sessions.clear()
     }
+    const items = isBrowserAgentMode()
+      ? [browserWorkspaceView(sessions), ...workspace.items.filter(item => item.workspaceId !== BROWSER_WORKSPACE_ID)]
+      : workspace.items
     this.list.set({
-      items: workspace.items,
+      items,
       archivedSessionIds: workspace.archivedSessionIds,
       state: workspace.state,
       phase: workspace.phase,
@@ -351,6 +385,25 @@ export class WorkspaceRuntime implements IWorkspaces {
       baselinesReady,
       recentWorkspaceId: baselinesReady ? recentWorkspace(workspace.items, sessions.byId) : undefined,
     })
+  }
+}
+
+/** Whether the web app was booted with the browser-agent transport. */
+function isBrowserAgentMode(): boolean {
+  return typeof location !== 'undefined' && new URLSearchParams(location.search).has('browser-agent')
+}
+
+/** Project the browser agent's sessions as one synthetic workspace account. */
+function browserWorkspaceView(sessions: SessionsPortList): WorkspaceView {
+  const sessionIds = sessions.ids.filter(id => sessions.byId[id]?.cwd === BROWSER_WORKSPACE_PATH)
+  const timestamp = new Date(0).toISOString()
+  return {
+    workspaceId: BROWSER_WORKSPACE_ID,
+    path: BROWSER_WORKSPACE_PATH,
+    title: 'Browser workspace',
+    sessionIds,
+    createdAt: timestamp,
+    updatedAt: timestamp,
   }
 }
 

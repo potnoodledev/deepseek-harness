@@ -6,14 +6,18 @@ import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apply, type ConnectionHandle } from '../src/client/index.ts'
 import type { RpcMessage } from '../src/client/api.ts'
+import type { IApiClient } from '../src/client/api.ts'
 import { RpcId } from '../src/client/api.ts'
 import { FixtureApiClient } from '../src/client/fixture.ts'
 import { WebApiClient } from '../src/client/web-api-client.ts'
 
 type Win = { location?: { hostname: string; search: string; origin?: string } }
 type WebSocketGlobal = { WebSocket?: typeof WebSocket }
+type BrowserAgentWindow = Window & { __DSH_BROWSER_AGENT__?: () => Promise<IApiClient> }
 
 const originalWebSocket = globalThis.WebSocket
+const originalBrowserAgent = (globalThis.window as BrowserAgentWindow | undefined)?.__DSH_BROWSER_AGENT__
+const testWindow = globalThis as unknown as Window & typeof globalThis
 const sockets: FakeWebSocket[] = []
 
 class FakeWebSocket extends EventTarget {
@@ -50,8 +54,12 @@ class FakeWebSocket extends EventTarget {
 afterEach(() => {
   delete (globalThis as Win).location
   sockets.length = 0
+  const browserWindow = globalThis.window as BrowserAgentWindow | undefined
+  if (originalBrowserAgent === undefined) delete browserWindow?.__DSH_BROWSER_AGENT__
+  else if (browserWindow !== undefined) browserWindow.__DSH_BROWSER_AGENT__ = originalBrowserAgent
   if (originalWebSocket === undefined) delete (globalThis as WebSocketGlobal).WebSocket
   else globalThis.WebSocket = originalWebSocket
+  if (globalThis.window === testWindow) delete (globalThis as { window?: unknown }).window
 })
 
 async function mount(): Promise<ConnectionHandle> {
@@ -77,6 +85,16 @@ describe('connection client apply', () => {
     const handle = await mount()
     expect(handle.api).toBeInstanceOf(WebApiClient)
     expect(handle.isLoopback).toBe(true)
+  })
+
+  it('selects the installed browser-agent transport only under ?browser-agent', async () => {
+    ;(globalThis as Win).location = { hostname: 'localhost', search: '?browser-agent' }
+    const fake = {} as IApiClient
+    ;(globalThis as { window?: BrowserAgentWindow }).window = testWindow
+    ;(testWindow as BrowserAgentWindow).__DSH_BROWSER_AGENT__ = () => Promise.resolve(fake)
+    const handle = await mount()
+    expect(handle.api).not.toBeInstanceOf(WebApiClient)
+    expect(handle.api).not.toBeInstanceOf(FixtureApiClient)
   })
 
   it('reports non-loopback page authority through the connection handle', async () => {

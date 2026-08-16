@@ -5,6 +5,14 @@
  */
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
 
-const el = document.getElementById('root')
-if (el === null) throw new Error('web app: missing #root')
-void new AppWebEntry(el).run()
+async function main(): Promise<void> {
+  if (new URLSearchParams(location.search).has('browser-agent')) {
+    const { installBrowserAgent } = await import('./browser-agent.ts')
+    installBrowserAgent()
+  }
+  const el = document.getElementById('root')
+  if (el === null) throw new Error('web app: missing #root')
+  await new AppWebEntry(el).run()
+}
+
+void main()

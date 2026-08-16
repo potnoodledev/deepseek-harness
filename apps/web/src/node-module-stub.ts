@@ -1,11 +1,11 @@
-/**
- * Browser stand-in for `node:module`. `createRequire` is unreachable in the
- * configured loader path and fails loud if that assumption changes.
- */
+/** Browser stand-in for the small `node:module` surface used by the client graph. */
 
-/** Throwing stand-in for node:module's createRequire (never reached in the browser boot). */
-export const createRequire = (): never => {
-  throw new Error('node:module is not available in the browser')
+/** Resolve the package metadata needed for provider attribution without filesystem access. */
+export const createRequire = (_filename?: string | URL): ((specifier: string) => unknown) => {
+  return (specifier: string): unknown => {
+    if (specifier.endsWith('package.json')) return { version: '0.0.0' }
+    throw new Error(`createRequire(${JSON.stringify(specifier)}) is not available in the browser`)
+  }
 }
 
 /** Erased type peer for the vendored loader's type-only LoadHookContext import. */

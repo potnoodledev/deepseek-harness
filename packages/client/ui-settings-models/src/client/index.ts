@@ -87,7 +87,7 @@ export function apply(ctx: ClientContext): void {
   })
   const welcomeController = new WelcomeNoticeStore(
     connection.api,
-    connection.isLoopback ? 'host' : 'memory',
+    connection.isLoopback && !isBrowserAgentMode() ? 'host' : 'memory',
   )
   const welcomeInjected = (): WelcomeNoticeInjected => ({
     controller: welcomeController,
@@ -134,4 +134,9 @@ export function apply(ctx: ClientContext): void {
     order: 0,
     inject: deepSeekOnboardingInjected,
   }, DeepSeekOnboardingDialog))
+}
+
+/** Browser-agent mode has no Host settings provider; keep onboarding local to the page. */
+function isBrowserAgentMode(): boolean {
+  return typeof location !== 'undefined' && new URLSearchParams(location.search).has('browser-agent')
 }

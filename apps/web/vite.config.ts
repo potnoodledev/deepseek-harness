@@ -1,9 +1,12 @@
 import { fileURLToPath } from 'node:url'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const src = (rel: string): string => fileURLToPath(new URL(rel, import.meta.url))
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const STANDALONE_ERROR = 'apps/web is not a standalone application: bare Vite cannot inject window.__DSH_BOOT__. '
   + 'From a repository checkout, run `pnpm dsh web`; an installed package uses `dsh web`. '
   + 'For client-plugin HMR, run `pnpm dsh web` together with `pnpm run dev:web`.'
@@ -14,6 +17,79 @@ function rejectStandaloneServe(): Plugin {
     name: 'dsh-reject-standalone-web-serve',
     config(_config, env) {
       if (env.command === 'serve') throw new Error(STANDALONE_ERROR)
+    },
+  }
+}
+
+/** Resolve the browser-agent's host graph to source and replace its Node-only imports. */
+function browserAgentSource(): Plugin {
+  const tsconfig = JSON.parse(readFileSync(resolve(repoRoot, 'tsconfig.base.json'), 'utf8').replace(/\/\/.*$/gm, '')) as {
+    compilerOptions: { paths: Record<string, string[]> }
+  }
+  const paths = Object.entries(tsconfig.compilerOptions.paths)
+  const browserGraph = new Set<string>()
+  const fileCandidate = (candidate: string): string | undefined => {
+    if (existsSync(`${candidate}.ts`)) return `${candidate}.ts`
+    if (existsSync(`${candidate}.tsx`)) return `${candidate}.tsx`
+    if (existsSync(`${candidate}.js`)) return `${candidate}.js`
+    if (existsSync(resolve(candidate, 'index.ts'))) return resolve(candidate, 'index.ts')
+    if (existsSync(resolve(candidate, 'index.tsx'))) return resolve(candidate, 'index.tsx')
+    if (existsSync(resolve(candidate, 'index.js'))) return resolve(candidate, 'index.js')
+    return undefined
+  }
+  const shims = {
+    'node:async_hooks': 'async-hooks.ts', 'node:child_process': 'child-process.ts',
+    'node:crypto': 'crypto.ts', 'node:fs': 'fs.ts', 'node:fs/promises': 'fs-promises.ts',
+    'node:module': 'module.ts', 'node:os': 'os.ts', 'node:path': 'path.ts',
+    'node:timers/promises': 'timers.ts', 'node:url': 'url.ts', 'node:util/types': 'util-types.ts',
+  }
+  return {
+    name: 'dsh-browser-agent-source',
+    enforce: 'pre',
+    resolveId(id, importer) {
+      if (importer?.endsWith('/apps/web/src/browser-agent-runtime.js') && id.startsWith('.')) {
+        const file = resolve(dirname(importer), id)
+        browserGraph.add(file)
+        return file
+      }
+      const browserImport = importer !== undefined && (
+        importer.includes('/spikes/browser-agent/')
+        || browserGraph.has(importer)
+        || importer.includes('/packages/')
+      )
+      if (!browserImport) return null
+      const shim = shims[id as keyof typeof shims]
+      if (shim !== undefined) {
+        const file = resolve(repoRoot, 'spikes/browser-agent/src/shims', shim)
+        browserGraph.add(file)
+        return file
+      }
+      if (!id.startsWith('@deepseek-ai/')) return null
+      for (const [pattern, replacements] of paths) {
+        if (pattern.includes('*')) {
+          const [prefix, suffix] = pattern.split('*')
+          if (!id.startsWith(prefix) || !id.endsWith(suffix)) continue
+          const part = id.slice(prefix.length, id.length - suffix.length)
+          for (const replacement of replacements) {
+            const candidate = resolve(repoRoot, replacement.replace('*', part))
+            const file = fileCandidate(candidate)
+            if (file !== undefined) {
+              browserGraph.add(file)
+              return file
+            }
+          }
+        } else if (id === pattern) {
+          for (const replacement of replacements) {
+            const candidate = resolve(repoRoot, replacement)
+            const file = fileCandidate(candidate)
+            if (file !== undefined) {
+              browserGraph.add(file)
+              return file
+            }
+          }
+        }
+      }
+      return null
     },
   }
 }
@@ -90,7 +166,7 @@ function npmPackageOf(id: string): string | undefined {
 }
 
 export default defineConfig({
-  plugins: [rejectStandaloneServe(), react()],
+  plugins: [rejectStandaloneServe(), browserAgentSource(), react()],
   build: {
     sourcemap: true,
     rollupOptions: {

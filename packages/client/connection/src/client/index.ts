@@ -77,6 +77,38 @@ export interface ConnectionHandle {
   start(sinks: ConnectionSinks, config?: ConnectionConfig): { stop(): void }
 }
 
+declare global {
+  interface Window {
+    /** Optional app-provided local agent transport for browser-agent mode. */
+    __DSH_BROWSER_AGENT__?: () => Promise<IApiClient>
+  }
+}
+
+/** Delay API calls until the in-browser agent gateway has mounted. */
+function deferredApi(ready: Promise<IApiClient>): IApiClient {
+  return new Proxy({}, {
+    get: (_target, group: string) => new Proxy({}, {
+      get: (_nested, method: string) => {
+        if (group === 'events') {
+          return (...args: unknown[]) => (async function* () {
+            const events = await ready
+            const open = (events.events as unknown as Record<string, (...values: unknown[]) => AsyncIterable<unknown>>)[method]
+            if (open === undefined) throw new Error(`connection: unknown event stream ${method}`)
+            const stream = open(...args)
+            yield* stream
+          })()
+        }
+        return (...args: unknown[]) => ready.then((client) => {
+          const service = (client as unknown as Record<string, Record<string, (...values: unknown[]) => unknown>>)[group]
+          const call = service?.[method]
+          if (call === undefined) throw new Error(`connection: unknown API method ${group}.${method}`)
+          return call(...args)
+        })
+      },
+    }),
+  }) as IApiClient
+}
+
 /**
  * Client plugin body: pick the api by page mode and provide ctx.connection.
  * @param ctx - client cordis context.
@@ -84,8 +116,16 @@ export interface ConnectionHandle {
 export function apply(ctx: Context): void {
   const pageLocation = typeof location === 'undefined' ? undefined : location
   const fixture = pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('fixture')
+  const browserAgent = pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('browser-agent')
+    ? globalThis.window?.__DSH_BROWSER_AGENT__
+    : undefined
+  if (pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('browser-agent') && browserAgent === undefined) {
+    throw new Error('browser-agent mode was requested but its transport was not installed')
+  }
   const fixtureClient = fixture ? new FixtureApiClient() : undefined
-  const api: IApiClient = fixtureClient ?? new WebApiClient()
+  const api: IApiClient = browserAgent === undefined
+    ? fixtureClient ?? new WebApiClient()
+    : deferredApi(browserAgent())
   const rpc = fixtureClient?.rpc ?? createWebConnectionRpc()
   let started = false
   let description: HostDescription | undefined

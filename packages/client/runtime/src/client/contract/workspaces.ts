@@ -28,6 +28,8 @@ export interface IWorkspaces {
    * Session's Workspace before falling back to the recency projection.
    */
   startSession(workspaceId?: WorkspaceId): void
+  /** Switch the page to the browser-held OPFS workspace. */
+  selectBrowserWorkspace?: () => void
   /**
    * Register an existing path as a Workspace.
    * @param input - the Host create payload.

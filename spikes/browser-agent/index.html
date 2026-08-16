@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeepSeek Browser Agent</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #101113; color: #e8e8e8; }
+      body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 20% 0%, #263448, #101113 48%); }
+      main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
+      header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+      h1 { margin: 0; font-size: clamp(28px, 5vw, 48px); letter-spacing: -0.04em; }
+      #status { color: #91a4bb; margin: 8px 0 0; }
+      .badge { border: 1px solid #38506b; border-radius: 999px; padding: 7px 12px; color: #a9d6ff; font-size: 12px; white-space: nowrap; }
+      #conversation { display: grid; gap: 12px; }
+      .event { border: 1px solid #2b3038; border-radius: 14px; padding: 14px 16px; background: rgba(22, 24, 28, .88); }
+      .event.user { border-color: #315a78; }
+      .event.assistant { border-color: #405b47; }
+      .event.tool { border-color: #6d5733; }
+      .event-label { color: #8ea0b4; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+      .event-body { margin-top: 7px; white-space: pre-wrap; line-height: 1.55; }
+      .empty { color: #91a4bb; border: 1px dashed #35404e; border-radius: 14px; padding: 24px; }
+      #composer { display: flex; gap: 10px; margin-top: 18px; }
+      #composer input { flex: 1; min-width: 0; border: 1px solid #35404e; border-radius: 10px; padding: 13px 14px; color: inherit; background: #171a1f; }
+      #composer button { border: 0; border-radius: 10px; padding: 0 18px; color: #081018; background: #a9d6ff; font-weight: 700; }
+      #composer button:disabled { opacity: .45; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>DeepSeek Browser Agent</h1>
+          <p id="status">Starting the in-browser workspace...</p>
+        </div>
+        <span class="badge">OPFS · in-process API</span>
+      </header>
+      <section id="conversation" aria-live="polite">
+        <div class="empty">The agent conversation will appear here.</div>
+      </section>
+      <form id="composer">
+        <input id="prompt" autocomplete="off" placeholder="Ask the browser agent..." />
+        <button type="submit">Send</button>
+      </form>
+    </main>
+    <script src="/config.js"></script>
+    <script type="module" src="/agent.js"></script>
+  </body>
+</html>
