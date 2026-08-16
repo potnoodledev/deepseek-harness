@@ -1,0 +1,16 @@
+# Railway's proxy reaches the process through all interfaces. Railway supplies
+# the public hostname so the browser API trust fence accepts same-origin calls.
+- id: webserver
+  config:
+    host: 0.0.0.0
+    port: !!js Number(process.env.PORT ?? 3080)
+
+- id: web-runtime
+  config:
+    printUrl: false
+    surfaceContext: true
+    trustedHosts: !!js "process.env.RAILWAY_PUBLIC_DOMAIN === undefined ? [] : [process.env.RAILWAY_PUBLIC_DOMAIN]"
+
+- id: connection
+  config:
+    trustedHosts: !!js "process.env.RAILWAY_PUBLIC_DOMAIN === undefined ? [] : [process.env.RAILWAY_PUBLIC_DOMAIN]"
