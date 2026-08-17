@@ -15,6 +15,7 @@ import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 import { VersionBadge } from './VersionBadge.tsx'
+import { PasskeyGate } from './PasskeyGate.tsx'
 
 // Contract exports only (export-convergence rule: cross-package consumers
 // keep a symbol exported; test-only/package-internal symbols live off /src).
@@ -160,4 +161,9 @@ export function apply(ctx: ClientContext): void {
     id: 'version',
     order: 100,
   }, VersionBadge))
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'passkey-auth',
+    order: 200,
+  }, PasskeyGate))
 }

@@ -10,6 +10,9 @@
     printUrl: false
     surfaceContext: true
     trustedHosts: !!js "process.env.RAILWAY_PUBLIC_DOMAIN === undefined ? [] : [process.env.RAILWAY_PUBLIC_DOMAIN]"
+    rpId: !!js process.env.RAILWAY_PUBLIC_DOMAIN
+    origin: !!js "process.env.RAILWAY_PUBLIC_ORIGIN ?? ('https://' + process.env.RAILWAY_PUBLIC_DOMAIN)"
+    storagePath: !!js dshHomePath('passkey.json')
 
 - id: connection
   config:

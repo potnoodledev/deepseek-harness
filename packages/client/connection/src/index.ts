@@ -162,6 +162,12 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
     kind: 'prefix',
     path: API_PATH,
     handler: async (req, res) => {
+      const passkeyAuth = ctx.get('passkeyAuth') as { isAuthenticated(request: typeof req): Promise<boolean> } | undefined
+      if (passkeyAuth !== undefined && !(await passkeyAuth.isAuthenticated(req))) {
+        res.writeHead(401)
+        res.end('authentication required')
+        return
+      }
       if (!isTrustedApiRequest(req, trustedHosts)) {
         res.writeHead(403)
         res.end('forbidden')
@@ -181,6 +187,21 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
       apiCtx.effect(() => apiCtx.webServer.registerUpgrade({
         path,
         handler: (req, socket, head) => {
+          const passkeyAuth = apiCtx.get('passkeyAuth') as { isAuthenticated(request: typeof req): Promise<boolean> } | undefined
+          if (passkeyAuth !== undefined) {
+            void passkeyAuth.isAuthenticated(req).then((authenticated) => {
+              if (!authenticated) {
+                rejectWebSocketUpgrade(socket)
+                return
+              }
+              if (!isTrustedApiRequest(req, trustedHosts)) {
+                rejectWebSocketUpgrade(socket)
+                return
+              }
+              return handle(req, socket, head)
+            }).catch(() => { rejectWebSocketUpgrade(socket) })
+            return
+          }
           if (!isTrustedApiRequest(req, trustedHosts)) {
             rejectWebSocketUpgrade(socket)
             return
