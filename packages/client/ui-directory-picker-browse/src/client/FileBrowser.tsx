@@ -62,6 +62,7 @@ export function FileBrowser(props: FileBrowserProps): ReactNode {
     return <button type="button" className={css.railButton} aria-label={t('expand')} onClick={expandSidebar}>▦</button>
   }
   if (workspace === undefined) return <section className={css.root}><h2>{t('title')}</h2><p>{t('empty')}</p></section>
+  const goParent = (): void => { setPath(parentPath(state?.path ?? workspace.path)) }
 
   return (
     <section className={css.root} aria-label={t('title')}>
@@ -71,7 +72,7 @@ export function FileBrowser(props: FileBrowserProps): ReactNode {
         {state?.path !== workspace.path && <button
           type="button"
           className={css.row}
-          onClick={() => { setPath(parentPath(state?.path ?? workspace.path)) }}
+          onClick={goParent}
         >..</button>}
         {state?.loading && <p className={css.status}>{t('loading')}</p>}
         {state?.error !== undefined && <p className={css.error}>{state.error}</p>}
