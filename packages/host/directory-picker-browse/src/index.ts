@@ -155,7 +155,8 @@ function messageOf(error: unknown): string {
  * shows what can be entered, and a broken link cannot).
  */
 async function directoryRow(
-  parent: string, name: string, isDirectory: boolean, isSymbolicLink: boolean, signal: AbortSignal | undefined,
+  parent: string, name: string, isDirectory: boolean, isSymbolicLink: boolean,
+  includeFiles: boolean, signal: AbortSignal | undefined,
 ): Promise<DirectoryEntry | null> {
   const path = join(parent, name)
   let enterable = isDirectory
@@ -171,10 +172,10 @@ async function directoryRow(
       return null
     }
   }
-  if (!enterable) return null
+  if (!enterable && !includeFiles) return null
   // POSIX hidden convention; Windows' hidden attribute is not exposed by
   // dirents (Known Limitations). The client owns whether hidden rows show.
-  return { name, path, hidden: name.startsWith('.') }
+  return { name, path, hidden: name.startsWith('.'), kind: enterable ? 'directory' : 'file' }
 }
 
 /** Validated plugin configuration. */
@@ -198,7 +199,7 @@ export default class BrowseDirectoryPicker extends DirectoryPicker {
 
   private readonly browseCapability: DirectoryPickerCapability = {
     kind: 'browse',
-    list: (path, signal) => this.list(path, signal),
+    list: (path, signal, options) => this.list(path, signal, options),
     createDirectory: (path, name) => this.createDirectory(path, name),
   }
 
@@ -214,7 +215,8 @@ export default class BrowseDirectoryPicker extends DirectoryPicker {
     return this.browseCapability
   }
 
-  private async list(path?: string, signal?: AbortSignal): Promise<DirectoryListing> {
+  private async list(path?: string, signal?: AbortSignal, options?: { includeFiles?: boolean }): Promise<DirectoryListing> {
+    const includeFiles = options?.includeFiles === true
     const home = homedir()
     // The seam contract takes fully qualified paths only; resolve() would
     // silently rebase a relative or empty wire value under the host process
@@ -256,7 +258,7 @@ export default class BrowseDirectoryPicker extends DirectoryPicker {
           if (dirent === null) break
           // Only rows a browser could enter contend for the window; dirent
           // says "directory" outright, a symlink needs the later stat probe.
-          if (!dirent.isDirectory() && !dirent.isSymbolicLink()) continue
+          if (!includeFiles && !dirent.isDirectory() && !dirent.isSymbolicLink()) continue
           const candidate = { name: dirent.name, isDirectory: dirent.isDirectory(), isSymbolicLink: dirent.isSymbolicLink() }
           if (boundedInsert(window, candidate, keep)) evicted = true
         }
@@ -285,7 +287,7 @@ export default class BrowseDirectoryPicker extends DirectoryPicker {
       // A caller that departed between reads and probes stops before the
       // next probe (each probe's own await is raced inside directoryRow).
       signal?.throwIfAborted()
-      const row = await directoryRow(target, candidate.name, candidate.isDirectory, candidate.isSymbolicLink, signal)
+      const row = await directoryRow(target, candidate.name, candidate.isDirectory, candidate.isSymbolicLink, includeFiles, signal)
       if (row === null) continue
       if (entries.length === this.config.maxEntries) {
         truncated = true

@@ -13,6 +13,8 @@ export interface DirectoryEntry {
   path: string
   /** Hidden by the host platform's convention (dot-prefixed on POSIX); the client owns whether to show it. */
   hidden: boolean
+  /** Present when a caller requested files as well as directories. */
+  kind?: 'file' | 'directory'
 }
 
 /** host.listDirectory response value: one directory level plus its ancestry. */
@@ -69,7 +71,7 @@ export interface HostApi {
    * on disconnect or timeout.
    */
   listDirectory(
-    request: RpcRequest<{ path?: string }>,
+    request: RpcRequest<{ path?: string; includeFiles?: boolean }>,
     signal: AbortSignal,
   ): Promise<RpcResponse<DirectoryListing>>
 

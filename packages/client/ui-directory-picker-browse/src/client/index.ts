@@ -10,11 +10,15 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the SlotMap merge declaring the directory-flow holes.
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { BrowseFlowInjected } from './flow.ts'
 import { BrowseDirectoryFlow } from './flow.ts'
+import { FileBrowser } from './FileBrowser.tsx'
+import type { FileBrowserInjected } from './FileBrowser.tsx'
 
 /** Locale namespace owning the browser dialog's copy. */
 const LOCALE_NS = 'directory-browser'
+const FILE_BROWSER_NS = 'fileBrowser'
 
 /** Required services (cordis fiber inject): the slot registry, the wire-facing workspace service, and locale. */
 export const inject = ['slots', 'workspaces', 'locale']
@@ -63,8 +67,13 @@ export function apply(ctx: ClientContext): void {
         'browser.showHidden': 'Show hidden files',
       }],
     ]
+    const fileDictionaries: [locale: string, dict: Record<string, string>][] = [
+      ['zh', { title: '文件', empty: '没有文件', loading: '加载中…', expand: '展开文件浏览器' }],
+      ['en', { title: 'Files', empty: 'No files', loading: 'Loading…', expand: 'Expand file browser' }],
+    ]
     try {
       for (const [locale, dict] of dictionaries) disposers.push(ctx.locale.register(LOCALE_NS, locale, dict))
+      for (const [locale, dict] of fileDictionaries) disposers.push(ctx.locale.register(FILE_BROWSER_NS, locale, dict))
     } catch (error) {
       for (const dispose of disposers.reverse()) dispose()
       throw error
@@ -76,6 +85,9 @@ export function apply(ctx: ClientContext): void {
     listDirectory: (path, signal) => ctx.workspaces.listDirectory(path, signal),
     createDirectory: (path, name) => ctx.workspaces.createDirectory(path, name),
     t: ctx.locale.bind(LOCALE_NS),
+  })
+  const fileBrowserInjected = (): FileBrowserInjected => ({
+    listDirectory: (path, signal, options) => ctx.workspaces.listDirectory(path, signal, options),
   })
   // Both declaration lifetimes must be live before the pair installs; the
   // generator makes the two registrations one transactional effect. The
@@ -89,4 +101,9 @@ export function apply(ctx: ClientContext): void {
         name: 'sidebar.workspaces.directoryFlow', inject: injected,
       }, BrowseDirectoryFlow)
     }))
+  ctx.slots.inject('sidebar.fileBrowser', () => ctx.slots.register({
+    name: 'sidebar.fileBrowser',
+    locale: FILE_BROWSER_NS,
+    inject: fileBrowserInjected,
+  }, FileBrowser))
 }

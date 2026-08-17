@@ -1,0 +1,11 @@
+.root { flex: none; min-height: 0; padding: 8px 10px 6px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.root h2 { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary); }
+.path { overflow: hidden; color: var(--dsw-alias-label-caption); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.list { max-height: 180px; overflow-y: auto; margin-top: 4px; }
+.row { display: flex; align-items: center; gap: 5px; width: 100%; min-height: 24px; padding: 2px 4px; border: 0; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-primary); text-align: left; font-size: 12px; cursor: pointer; }
+.row:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.row[data-kind='file'] { color: var(--dsw-alias-label-secondary); }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status, .error { margin: 4px 0; color: var(--dsw-alias-label-caption); font-size: 11px; }
+.error { color: var(--dsw-alias-state-error-primary); }
+.railButton { width: 100%; padding: 8px 0; border: 0; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; }

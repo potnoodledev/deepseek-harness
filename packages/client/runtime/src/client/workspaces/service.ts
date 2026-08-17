@@ -251,8 +251,8 @@ export class WorkspaceRuntime implements IWorkspaces {
    * @param signal - aborts the wire request (and the Host's scan) when the caller supersedes it.
    * @returns the level's listing with breadcrumb ancestry.
    */
-  async listDirectory(path?: string, signal?: AbortSignal): Promise<DirectoryListing> {
-    const response = await this.api.host.listDirectory(path === undefined ? {} : { path }, signal)
+  async listDirectory(path?: string, signal?: AbortSignal, options?: { includeFiles?: boolean }): Promise<DirectoryListing> {
+    const response = await this.api.host.listDirectory(path === undefined ? { ...options } : { path, ...options }, signal)
     if (!response.result.ok) throw new DirectoryBrowseError(response.result.error)
     return response.result.value
   }

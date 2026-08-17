@@ -32,6 +32,8 @@ export interface DirectoryEntry {
   path: string
   /** Hidden by the host platform's convention (dot-prefixed on POSIX); the client owns whether to show it. */
   hidden: boolean
+  /** Present when a caller requested files as well as directories. */
+  kind?: 'file' | 'directory'
 }
 
 /** One directory level plus its ancestry, as a browse backend reports it. */
@@ -74,7 +76,7 @@ export interface DirectoryPickerBrowseCapability {
    * qualified (a wire value must never resolve against the host cwd or, on
    * Windows, its current drive) or cannot be listed.
    */
-  list(path?: string, signal?: AbortSignal): Promise<DirectoryListing>
+  list(path?: string, signal?: AbortSignal, options?: { includeFiles?: boolean }): Promise<DirectoryListing>
   /**
    * Create one child directory under an existing parent.
    * @param path - absolute existing parent directory.
