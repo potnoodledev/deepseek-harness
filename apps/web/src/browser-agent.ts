@@ -5,7 +5,7 @@ type BrowserAgentWindow = Window & {
   __DSH_BROWSER_AGENT__?: () => Promise<unknown>
 }
 
-/** Install the opt-in local agent transport before the client plugin graph boots. */
+/** Install the local agent transport before the client plugin graph boots. */
 export function installBrowserAgent(): void {
   ;(globalThis.window as BrowserAgentWindow).__DSH_BROWSER_AGENT__ = browserAgentRuntime
 }

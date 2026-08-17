@@ -71,11 +71,20 @@ async function mount(): Promise<ConnectionHandle> {
 }
 
 describe('connection client apply', () => {
-  it('mounts ctx.connection with the real client when no ?fixture switch is present', async () => {
+  it('mounts the real client when no browser-agent transport is installed', async () => {
     ;(globalThis as Win).location = { hostname: 'localhost', search: '' }
     const handle = await mount()
     expect(handle.api).toBeInstanceOf(WebApiClient)
     expect(handle.isLoopback).toBe(true)
+  })
+
+  it('selects the browser-agent client when no query string is present and its transport is installed', async () => {
+    ;(globalThis as Win).location = { hostname: 'localhost', search: '' }
+    ;(globalThis as { window?: BrowserAgentWindow }).window = testWindow
+    ;(testWindow as BrowserAgentWindow).__DSH_BROWSER_AGENT__ = () => Promise.resolve({} as IApiClient)
+    const handle = await mount()
+    expect(handle.api).not.toBeInstanceOf(WebApiClient)
+    expect(handle.api).not.toBeInstanceOf(FixtureApiClient)
   })
 
   it('selects the fixture client under ?fixture (and with no location at all stays real)', async () => {

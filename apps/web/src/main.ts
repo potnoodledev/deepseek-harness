@@ -6,7 +6,8 @@
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
 
 async function main(): Promise<void> {
-  if (new URLSearchParams(location.search).has('browser-agent')) {
+  const query = new URLSearchParams(location.search)
+  if (location.search === '' || query.has('browser-agent')) {
     const { installBrowserAgent } = await import('./browser-agent.ts')
     installBrowserAgent()
   }

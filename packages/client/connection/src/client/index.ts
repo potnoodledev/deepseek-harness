@@ -115,11 +115,14 @@ function deferredApi(ready: Promise<IApiClient>): IApiClient {
  */
 export function apply(ctx: Context): void {
   const pageLocation = typeof location === 'undefined' ? undefined : location
-  const fixture = pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('fixture')
-  const browserAgent = pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('browser-agent')
+  const query = pageLocation === undefined ? undefined : new URLSearchParams(pageLocation.search)
+  const explicitBrowserAgentMode = query?.has('browser-agent') === true
+  const browserAgentMode = pageLocation !== undefined && (pageLocation.search === '' || explicitBrowserAgentMode)
+  const fixture = query?.has('fixture') === true
+  const browserAgent = browserAgentMode
     ? globalThis.window?.__DSH_BROWSER_AGENT__
     : undefined
-  if (pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('browser-agent') && browserAgent === undefined) {
+  if (explicitBrowserAgentMode && browserAgent === undefined) {
     throw new Error('browser-agent mode was requested but its transport was not installed')
   }
   const fixtureClient = fixture ? new FixtureApiClient() : undefined

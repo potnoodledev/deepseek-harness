@@ -196,6 +196,7 @@ function clientConfig(id: string, entry: string): UserConfig {
     // the truthiness probe would otherwise survive as an empty import.meta.
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
+      '__DSH_BUILD_TIMESTAMP__': JSON.stringify(process.env.DSH_BUILD_TIMESTAMP ?? new Date().toISOString()),
       'import.meta.env.MODE': JSON.stringify(process.env.NODE_ENV ?? 'production'),
       'import.meta.env': JSON.stringify({ MODE: process.env.NODE_ENV ?? 'production' }),
     },

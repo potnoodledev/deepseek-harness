@@ -390,7 +390,9 @@ export class WorkspaceRuntime implements IWorkspaces {
 
 /** Whether the web app was booted with the browser-agent transport. */
 function isBrowserAgentMode(): boolean {
-  return typeof location !== 'undefined' && new URLSearchParams(location.search).has('browser-agent')
+  if (typeof location === 'undefined') return false
+  if (new URLSearchParams(location.search).has('browser-agent')) return true
+  return location.search === '' && globalThis.window?.__DSH_BROWSER_AGENT__ !== undefined
 }
 
 /** Project the browser agent's sessions as one synthetic workspace account. */

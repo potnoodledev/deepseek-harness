@@ -9,7 +9,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && npm install --global pnpm@11.7.0 \
   && pnpm install --frozen-lockfile \
-  && pnpm run build \
+  && DSH_BUILD_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)" pnpm run build \
   && pnpm store prune
 
 CMD ["pnpm", "dsh", "web", "--patch", "deploy/railway/web.cordis.yml"]
